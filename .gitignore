@@ -35,6 +35,7 @@ env/
 # Project specific
 *.log
 *.txt
+!requirements.txt
 *.csv
 *.pdf
 reports/

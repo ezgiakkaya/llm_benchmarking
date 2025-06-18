@@ -1,0 +1,12 @@
+streamlit==1.32.0
+pandas==2.2.1
+PyPDF2==3.0.1
+python-dotenv==1.0.1
+openai==1.12.0
+pymongo==4.6.1
+transformers==4.38.2
+groq==0.4.2
+torch==2.1.2
+sentence-transformers==2.5.1
+pinecone
+# Note: pinecone requires packaging>=24.2, which may conflict with streamlit's packaging<24 requirement. 
