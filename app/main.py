@@ -925,7 +925,7 @@ elif page == "📚 Create Questions":
                     3- measure the robustness of a student to different distractor, tricky questions
                     4- measure the students attention in details.
                     
-                    Make sure the questions are well prepared, options are well prepared. Do not keep the questions too short, 
+                    Make sure the questions are well difficult and challenging, well prepared, options are well prepared, tricky. Do not keep the questions  short, make them long
                     if needed add intentional distractors such as (i.e. if something is true try to convince a student who is not 
                     studied very well to the topic fall in to the trap in the opposite option), you can add close options to 
                     distract a student.
