@@ -19,7 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import from the new 'core' module
 from core.database import questions_collection as questions
 from core.database import responses_collection as responses
-from core.llm_clients import query_groq, GROQ_MODELS
+from core.llm_clients import query_groq, query_groq_with_rag, GROQ_MODELS
 from core.models import LLMResponse
 from core.question_versioning import generate_all_versions_for_question
 
@@ -130,7 +130,7 @@ def calculate_accuracy_structured(model_responses, questions_collection):
         elif q_type == "True/False" and "true_false_answer" in response:
             tf_data = response["true_false_answer"]
             model_answer_bool = tf_data.get("answer", False)
-            model_answer = str(model_answer_bool)  # Convert boolean to string
+            model_answer = str(model_answer_bool)
             confidence = float(tf_data.get("confidence", 0))  # Ensure float
             
             # Convert correct answer to boolean
@@ -173,7 +173,7 @@ st.markdown("**Advanced AI Model Comparison with Structured Responses & Confiden
 
 # Sidebar for navigation
 st.sidebar.title("🎯 Navigation")
-page = st.sidebar.radio("Go to", ["📝 Upload Questions", "🔬 Run Tests", "📊 Results Dashboard", "📈 Evaluate Metrics", "📚 Create Questions", "💾 Manage CSV Files", "📚 RAG System"])
+page = st.sidebar.radio("Go to", ["📝 Upload Questions", "🔬 Run Tests", "🔬 Run Tests with RAG", "📊 Results Dashboard", "📈 Evaluate Metrics", "📚 Create Questions", "💾 Manage CSV Files", "📚 RAG System"])
 
 if page == "📝 Upload Questions":
     st.header("📝 Upload Questions")
@@ -600,18 +600,240 @@ elif page == "🔬 Run Tests":
                     else:
                         st.warning(f"⚠️ No responses found for {question['q_id']} v{question.get('q_version', '1')}")
 
+elif page == "🔬 Run Tests with RAG":
+    st.header("🔬 Run Tests with RAG")
+    st.markdown("**Test questions with AI models enhanced by RAG document retrieval and get structured responses with confidence scores**")
+    
+    # Initialize RAG pipeline
+    try:
+        from core.rag_pipeline import RAGPipeline
+        rag_pipeline = RAGPipeline()
+        st.success("✅ RAG pipeline initialized successfully!")
+    except Exception as e:
+        st.error(f"❌ Error initializing RAG pipeline: {str(e)}")
+        st.info("Please ensure your RAG environment is properly configured with Pinecone and documents are uploaded.")
+        st.stop()
+    
+    # Get all questions
+    all_questions = list(questions.find())
+    if not all_questions:
+        st.warning("⚠️ No questions found in the database. Please upload some questions first.")
+    else:
+        # Initialize questions_to_test as empty list
+        questions_to_test = []
+        
+        # Group questions by base q_id for better organization
+        question_groups = {}
+        for q in all_questions:
+            base_id = q.get('original_q_id', q['q_id'])
+            if base_id not in question_groups:
+                question_groups[base_id] = []
+            question_groups[base_id].append(q)
+        
+        # Select question group to test
+        st.subheader("🎯 Select Questions to Test")
+        
+        # Show question selection with version info
+        base_question_options = []
+        for base_id, versions in question_groups.items():
+            version_count = len(versions)
+            base_q = versions[0]  # Get first version for display
+            base_question_options.append({
+                'base_id': base_id,
+                'display': f"**{base_id}** ({base_q['q_type']}) - {version_count} versions: {base_q['q_text'][:50]}...",
+                'versions': versions
+            })
+        
+        # Add test mode selection
+        test_mode = st.radio(
+            "🔬 Testing Mode",
+            ["Single Question", "Multiple Questions", "All Questions"],
+            help="Choose whether to test a single question, multiple questions, or all questions"
+        )
+        
+        if test_mode == "Single Question":
+            selected_base_option = st.selectbox(
+                "🎯 Select Question Group",
+                base_question_options,
+                format_func=lambda x: x['display']
+            )
+            
+            if selected_base_option:
+                versions = selected_base_option['versions']
+                
+                # Show version selection
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    test_option = st.radio(
+                        "🔬 Testing Options",
+                        ["Test All Versions", "Test Specific Version"],
+                        help="Choose whether to test all versions or a specific one"
+                    )
+                
+                with col2:
+                    if test_option == "Test Specific Version":
+                        selected_version = st.selectbox(
+                            "Select Version",
+                            versions,
+                            format_func=lambda x: f"Version {x.get('q_version', '1')}: {x.get('q_text', '')[:30]}..."
+                        )
+                        questions_to_test = [selected_version]
+                    else:
+                        questions_to_test = versions
+        
+        elif test_mode == "Multiple Questions":
+            selected_base_options = st.multiselect(
+                "🎯 Select Question Groups",
+                base_question_options,
+                format_func=lambda x: x['display']
+            )
+            
+            if selected_base_options:
+                # Get all versions of selected questions
+                questions_to_test = []
+                for option in selected_base_options:
+                    questions_to_test.extend(option['versions'])
+        
+        else:  # All Questions
+            questions_to_test = all_questions
+        
+        # Only proceed if we have questions to test
+        if questions_to_test:
+            st.subheader("📋 Questions to Test")
+            st.write(f"Total questions to test: {len(questions_to_test)}")
+            
+            # Show a summary of questions to be tested
+            with st.expander("📋 View Questions to Test", expanded=True):
+                for i, q in enumerate(questions_to_test):
+                    st.write(f"**{i+1}. {q['q_id']}** (Version {q.get('q_version', '1')})")
+                    st.write(f"Type: {q['q_type']} | Topic: {q.get('topic_tag', 'N/A')}")
+                    st.write(f"Question: {q['q_text'][:100]}...")
+                    st.write("---")
+            
+            if st.button("🚀 Run Tests with RAG", type="primary"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                with st.spinner(f"🤖 Running AI model tests with RAG on {len(questions_to_test)} question(s)..."):
+                    total_tests = len(questions_to_test) * len(GROQ_MODELS)
+                    completed = 0
+                    
+                    # Test All Groq Models with RAG-Enhanced Structured Responses
+                    for question in questions_to_test:
+                        for model_id, model_info in GROQ_MODELS.items():
+                            status_text.text(f"Querying {model_info['name']} with RAG for {question['q_id']} v{question.get('q_version', '1')}...")
+                            
+                            try:
+                                # Use RAG-enhanced structured query from llm_clients
+                                groq_response = query_groq_with_rag(
+                                    question['q_text'],
+                                    model_id,
+                                    question['q_type'],
+                                    question.get('q_options'),
+                                    rag_pipeline
+                                )
+                                
+                                if "error" not in groq_response:
+                                    # Create structured LLM response
+                                    llm_response = LLMResponse(
+                                        question_id=question["q_id"],
+                                        question_text=question["q_text"],
+                                        question_type=question["q_type"],
+                                        model_name=f"{model_info['name']} (RAG)",
+                                        timestamp=datetime.now().isoformat(),
+                                        version=str(question.get('q_version', "1"))
+                                    )
+                                    
+                                    # Add the appropriate answer type
+                                    if question['q_type'] == "MCQ":
+                                        llm_response.mcq_answer = groq_response["response"]
+                                    elif question['q_type'] == "True/False":
+                                        llm_response.true_false_answer = groq_response["response"]
+                                    else:
+                                        llm_response.short_answer = groq_response["response"]
+                                    
+                                    # Save structured response to database
+                                    response_dict = llm_response.model_dump()
+                                    # Add RAG-specific metadata
+                                    response_dict["rag_sources"] = groq_response.get("rag_sources", [])
+                                    response_dict["rag_enabled"] = True
+                                    responses.insert_one(response_dict)
+                                    
+                                completed += 1
+                                progress_bar.progress(completed / total_tests)
+                                
+                            except Exception as e:
+                                st.error(f"❌ Error testing {model_info['name']} with RAG on {question['q_id']}: {str(e)}")
+                                completed += 1
+                                progress_bar.progress(completed / total_tests)
+                    
+                    status_text.text("✅ All tests completed!")
+                    
+                # Display results for all tested questions
+                st.subheader("📊 Test Results")
+                
+                for question in questions_to_test:
+                    st.write(f"### Results for {question['q_id']} (Version {question.get('q_version', '1')})")
+                    
+                    # Get the latest RAG responses for this specific question version
+                    latest_responses = list(responses.find(
+                        {
+                            "question_id": question["q_id"],
+                            "version": str(question.get('q_version', "1")),
+                            "rag_enabled": True
+                        },
+                        sort=[("timestamp", -1)],
+                        limit=len(GROQ_MODELS)
+                    ))
+                    
+                    if latest_responses:
+                        for response in latest_responses:
+                            st.write(f"**Model:** {response.get('model_name', 'Unknown')}")
+                            
+                            # Extract answer based on question type
+                            if question['q_type'] == "MCQ" and "mcq_answer" in response:
+                                mcq_data = response["mcq_answer"]
+                                st.write(f"**Selected Option:** {mcq_data.get('selected_option', 'N/A')}")
+                                st.write(f"**Explanation:** {mcq_data.get('explanation', 'N/A')}")
+                                st.write(f"**Confidence:** {mcq_data.get('confidence', 0):.2f}")
+                            elif question['q_type'] == "True/False" and "true_false_answer" in response:
+                                tf_data = response["true_false_answer"]
+                                st.write(f"**Answer:** {tf_data.get('answer', 'N/A')}")
+                                st.write(f"**Explanation:** {tf_data.get('explanation', 'N/A')}")
+                                st.write(f"**Confidence:** {tf_data.get('confidence', 0):.2f}")
+                            elif question['q_type'] == "Short Answer" and "short_answer" in response:
+                                sa_data = response["short_answer"]
+                                st.write(f"**Answer:** {sa_data.get('answer', 'N/A')}")
+                                st.write(f"**Explanation:** {sa_data.get('explanation', 'N/A')}")
+                                st.write(f"**Confidence:** {sa_data.get('confidence', 0):.2f}")
+                            
+                            # Display RAG sources if available
+                            if response.get("rag_sources"):
+                                st.write("**RAG Sources:**")
+                                for source in response["rag_sources"]:
+                                    st.write(f"- {source}")
+                            
+                            st.write("---")
+                    else:
+                        st.warning(f"⚠️ No RAG responses found for {question['q_id']} v{question.get('q_version', '1')}")
+
 elif page == "📊 Results Dashboard":
     st.header("📊 Results Dashboard")
     st.markdown("**Comprehensive analysis of AI model performance with structured insights**")
 
-    # Get structured responses
+    # Get structured responses (including RAG-enhanced ones)
     active_groq_model_names = {model_info["name"] for model_info in GROQ_MODELS.values()}
+    # Add RAG model names to the active models list
+    rag_model_names = {f"{model_info['name']} (RAG)" for model_info in GROQ_MODELS.values()}
+    all_active_model_names = active_groq_model_names.union(rag_model_names)
+    
     all_db_responses = list(responses.find())
 
-    # Filter for structured responses only
+    # Filter for structured responses only (including RAG responses)
     structured_responses = [
         r for r in all_db_responses
-        if r.get("model_name") in active_groq_model_names and 
+        if (r.get("model_name") in all_active_model_names or r.get("rag_enabled", False)) and 
         ("mcq_answer" in r or "true_false_answer" in r or "short_answer" in r)
     ]
     
@@ -623,6 +845,34 @@ elif page == "📊 Results Dashboard":
         if accuracy_df.empty:
             st.warning("⚠️ No data available to display metrics.")
         else:
+            # Display RAG vs Non-RAG comparison if both exist
+            rag_responses = [r for r in structured_responses if r.get("rag_enabled", False)]
+            non_rag_responses = [r for r in structured_responses if not r.get("rag_enabled", False)]
+            
+            if rag_responses and non_rag_responses:
+                st.subheader("🔍 RAG vs Standard Model Comparison")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("🤖 Standard Responses", len(non_rag_responses))
+                with col2:
+                    st.metric("🔬 RAG-Enhanced Responses", len(rag_responses))
+                
+                # Calculate accuracy for each type
+                rag_accuracy_df = calculate_accuracy_structured(rag_responses, questions)
+                non_rag_accuracy_df = calculate_accuracy_structured(non_rag_responses, questions)
+                
+                if not rag_accuracy_df.empty and not non_rag_accuracy_df.empty:
+                    rag_accuracy = (rag_accuracy_df["is_correct"].sum() / len(rag_accuracy_df)) * 100
+                    non_rag_accuracy = (non_rag_accuracy_df["is_correct"].sum() / len(non_rag_accuracy_df)) * 100
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("🎯 Standard Accuracy", f"{non_rag_accuracy:.1f}%")
+                    with col2:
+                        st.metric("🎯 RAG Accuracy", f"{rag_accuracy:.1f}%", 
+                                 delta=f"{rag_accuracy - non_rag_accuracy:.1f}%")
+            
             # Overall Statistics
             st.subheader("📈 Overall Statistics")
             col1, col2, col3, col4 = st.columns(4)
