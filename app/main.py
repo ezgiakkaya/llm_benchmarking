@@ -22,6 +22,7 @@ from core.database import responses_collection as responses
 from core.llm_clients import query_groq, query_groq_with_rag, GROQ_MODELS
 from core.models import LLMResponse
 from core.question_versioning import generate_all_versions_for_question
+from core.benchmark_metrics import calculate_comprehensive_benchmark_metrics
 
 # Load environment variables
 load_dotenv()
@@ -173,7 +174,7 @@ st.markdown("**Advanced AI Model Comparison with Structured Responses & Confiden
 
 # Sidebar for navigation
 st.sidebar.title("🎯 Navigation")
-page = st.sidebar.radio("Go to", ["📝 Upload Questions", "🔬 Run Tests", "🔬 Run Tests with RAG", "📊 Results Dashboard", "📈 Evaluate Metrics", "📚 Create Questions", "💾 Manage CSV Files", "📚 RAG System"])
+page = st.sidebar.radio("Go to", ["📝 Upload Questions", "🔬 Run Tests", "🔬 Run Tests with RAG", "📊 Results Dashboard", "🏆 Benchmark", "📈 Evaluate Metrics", "📚 Create Questions", "💾 Manage CSV Files", "📚 RAG System"])
 
 if page == "📝 Upload Questions":
     st.header("📝 Upload Questions")
@@ -788,33 +789,94 @@ elif page == "🔬 Run Tests with RAG":
                     ))
                     
                     if latest_responses:
+                        # Calculate accuracy for display
+                        accuracy_results = []
+                        
                         for response in latest_responses:
-                            st.write(f"**Model:** {response.get('model_name', 'Unknown')}")
+                            model_name = response.get("model_name")
+                            is_correct = False
+                            confidence = 0
+                            explanation = ""
+                            model_answer = ""
+                            rag_sources = response.get("rag_sources", [])
                             
-                            # Extract answer based on question type
+                            # Extract data based on question type
                             if question['q_type'] == "MCQ" and "mcq_answer" in response:
                                 mcq_data = response["mcq_answer"]
-                                st.write(f"**Selected Option:** {mcq_data.get('selected_option', 'N/A')}")
-                                st.write(f"**Explanation:** {mcq_data.get('explanation', 'N/A')}")
-                                st.write(f"**Confidence:** {mcq_data.get('confidence', 0):.2f}")
+                                model_answer = mcq_data.get("selected_option", "")
+                                confidence = mcq_data.get("confidence", 0)
+                                explanation = mcq_data.get("explanation", "")
+                                
+                                # Check if correct
+                                correct_option = get_option_letter(question['q_correct_answer'], question['q_options'])
+                                is_correct = correct_option == model_answer
+                                
                             elif question['q_type'] == "True/False" and "true_false_answer" in response:
                                 tf_data = response["true_false_answer"]
-                                st.write(f"**Answer:** {tf_data.get('answer', 'N/A')}")
-                                st.write(f"**Explanation:** {tf_data.get('explanation', 'N/A')}")
-                                st.write(f"**Confidence:** {tf_data.get('confidence', 0):.2f}")
+                                model_answer_bool = tf_data.get("answer", False)
+                                model_answer = str(model_answer_bool)
+                                confidence = tf_data.get("confidence", 0)
+                                explanation = tf_data.get("explanation", "")
+                                
+                                # Check if correct
+                                correct_bool = str(question['q_correct_answer']).lower() == "true"
+                                is_correct = bool(correct_bool == model_answer_bool)
+                                
                             elif question['q_type'] == "Short Answer" and "short_answer" in response:
                                 sa_data = response["short_answer"]
-                                st.write(f"**Answer:** {sa_data.get('answer', 'N/A')}")
-                                st.write(f"**Explanation:** {sa_data.get('explanation', 'N/A')}")
-                                st.write(f"**Confidence:** {sa_data.get('confidence', 0):.2f}")
+                                model_answer = sa_data.get("answer", "")
+                                confidence = sa_data.get("confidence", 0)
+                                explanation = sa_data.get("explanation", "")
+                                
+                                # Check if correct
+                                is_correct = str(question['q_correct_answer']).lower().strip() == str(model_answer).lower().strip()
                             
-                            # Display RAG sources if available
-                            if response.get("rag_sources"):
-                                st.write("**RAG Sources:**")
-                                for source in response["rag_sources"]:
-                                    st.write(f"- {source}")
-                            
-                            st.write("---")
+                            accuracy_results.append({
+                                "model": model_name,
+                                "answer": model_answer,
+                                "correct": is_correct,
+                                "confidence": confidence,
+                                "explanation": explanation,
+                                "rag_sources": rag_sources
+                            })
+                        
+                        # Display results in an attractive format
+                        for result in accuracy_results:
+                            with st.expander(f"🤖 {result['model']} {'✅' if result['correct'] else '❌'} (RAG-Enhanced)", expanded=len(questions_to_test) == 1):
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric("Answer", result['answer'])
+                                with col2:
+                                    st.metric("Confidence", f"{result['confidence']:.1%}")
+                                with col3:
+                                    st.metric("Result", "✅ Correct" if result['correct'] else "❌ Incorrect")
+                                
+                                st.write("**Explanation:**")
+                                st.write(result['explanation'])
+                                
+                                # Display RAG sources if available
+                                if result['rag_sources']:
+                                    st.write("**📚 RAG Sources Used:**")
+                                    for source in result['rag_sources']:
+                                        st.write(f"- {source}")
+                                else:
+                                    st.write("**📚 RAG Sources:** No sources retrieved")
+                        
+                        # Summary for this question
+                        correct_count = sum(1 for r in accuracy_results if r['correct'])
+                        avg_confidence = sum(r['confidence'] for r in accuracy_results) / len(accuracy_results)
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("RAG Accuracy", f"{correct_count}/{len(accuracy_results)}")
+                        with col2:
+                            st.metric("Avg Confidence", f"{avg_confidence:.1%}")
+                        with col3:
+                            st.metric("Version", question.get('q_version', '1'))
+                        with col4:
+                            total_sources = sum(len(r['rag_sources']) for r in accuracy_results)
+                            st.metric("Total Sources", total_sources)
                     else:
                         st.warning(f"⚠️ No RAG responses found for {question['q_id']} v{question.get('q_version', '1')}")
 
@@ -1073,6 +1135,510 @@ elif page == "📊 Results Dashboard":
                             file_name=f"version_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                             mime="text/csv"
                         )
+                    else:
+                        st.warning("⚠️ No version metrics to export.")
+
+elif page == "🏆 Benchmark":
+    st.header("🏆 Benchmark")
+    st.markdown("**Comprehensive benchmark metrics including Basic Accuracy, Permutation Robustness Score, Distractor Sensitivity Score, and RAG Improvement Delta**")
+
+    # Get all responses for analysis
+    all_db_responses = list(responses.find())
+    
+    if not all_db_responses:
+        st.warning("⚠️ No test results found. Please run tests first to see benchmark metrics.")
+        
+        # Show available questions for future testing
+        st.subheader("📊 Available Questions for Testing")
+        
+        distinct_questions = list(questions.find({
+            "$or": [
+                {"q_version": "1"},
+                {"q_version": {"$exists": False}}
+            ]
+        }))
+        
+        if distinct_questions:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📝 Total Questions", len(distinct_questions))
+            with col2:
+                mcq_count = len([q for q in distinct_questions if q.get("q_type") == "MCQ"])
+                st.metric("🔤 MCQ Questions", mcq_count)
+            with col3:
+                topics = len(set(q.get("topic_tag", "Unknown") for q in distinct_questions))
+                st.metric("📚 Unique Topics", topics)
+            
+            st.info("💡 Run tests using 'Run Tests' or 'Run Tests with RAG' to generate benchmark data.")
+        else:
+            st.warning("⚠️ No questions found in database. Please upload questions first.")
+    
+    else:
+        # Filter for structured responses only
+        active_groq_model_names = {model_info["name"] for model_info in GROQ_MODELS.values()}
+        rag_model_names = {f"{model_info['name']} (RAG)" for model_info in GROQ_MODELS.values()}
+        all_active_model_names = active_groq_model_names.union(rag_model_names)
+        
+        structured_responses = [
+            r for r in all_db_responses
+            if (r.get("model_name") in all_active_model_names or r.get("rag_enabled", False)) and 
+            ("mcq_answer" in r or "true_false_answer" in r or "short_answer" in r)
+        ]
+        
+        if not structured_responses:
+            st.warning("⚠️ No structured test results found. Please run tests using the new structured format.")
+        else:
+            # Calculate comprehensive benchmark metrics
+            with st.spinner("🔄 Calculating benchmark metrics..."):
+                metrics = calculate_comprehensive_benchmark_metrics(structured_responses, questions)
+            
+            # Display RAG vs Non-RAG comparison if both exist
+            rag_responses = [r for r in structured_responses if r.get("rag_enabled", False)]
+            non_rag_responses = [r for r in structured_responses if not r.get("rag_enabled", False)]
+            
+            if rag_responses and non_rag_responses:
+                st.subheader("🔍 RAG vs Standard Model Comparison")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("🤖 Standard Responses", len(non_rag_responses))
+                with col2:
+                    st.metric("🔬 RAG-Enhanced Responses", len(rag_responses))
+                
+                # Calculate basic accuracy for comparison
+                from core.benchmark_metrics import calculate_basic_accuracy
+                rag_accuracies = calculate_basic_accuracy(rag_responses, questions)
+                non_rag_accuracies = calculate_basic_accuracy(non_rag_responses, questions)
+                
+                if rag_accuracies and non_rag_accuracies:
+                    # Calculate overall averages
+                    avg_rag_accuracy = sum(rag_accuracies.values()) / len(rag_accuracies)
+                    avg_non_rag_accuracy = sum(non_rag_accuracies.values()) / len(non_rag_accuracies)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("🎯 Standard Accuracy", f"{avg_non_rag_accuracy:.1f}%")
+                    with col2:
+                        st.metric("🎯 RAG Accuracy", f"{avg_rag_accuracy:.1f}%", 
+                                 delta=f"{avg_rag_accuracy - avg_non_rag_accuracy:.1f}%")
+            
+            # Overall Statistics
+            st.subheader("📈 Overall Statistics")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("🎯 Total Tests", len(structured_responses))
+            with col2:
+                accuracy_df = calculate_accuracy_structured(structured_responses, questions)
+                if not accuracy_df.empty:
+                    overall_accuracy = (accuracy_df["is_correct"].sum() / len(accuracy_df)) * 100
+                    st.metric("✅ Overall Accuracy", f"{overall_accuracy:.1f}%")
+                else:
+                    st.metric("✅ Overall Accuracy", "0.0%")
+            with col3:
+                if not accuracy_df.empty:
+                    avg_confidence = accuracy_df["confidence"].mean() * 100
+                    st.metric("🎯 Avg Confidence", f"{avg_confidence:.1f}%")
+                else:
+                    st.metric("🎯 Avg Confidence", "0.0%")
+            with col4:
+                unique_models = len(set(r.get("model_name", "") for r in structured_responses))
+                st.metric("🤖 Models Tested", unique_models)
+            
+            # Advanced Benchmark Metrics
+            st.subheader("🏆 Advanced Benchmark Metrics")
+            
+            # Basic Accuracy
+            st.write("### 📊 Basic Accuracy (Acc)")
+            st.write("*Percentage of questions answered correctly by each model*")
+            
+            basic_acc = metrics["basic_accuracy"]
+            if basic_acc:
+                acc_df = pd.DataFrame(list(basic_acc.items()), columns=["Model", "Accuracy (%)"])
+                acc_df = acc_df.sort_values("Accuracy (%)", ascending=False)
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.bar_chart(acc_df.set_index("Model")["Accuracy (%)"])
+                with col2:
+                    st.dataframe(acc_df, use_container_width=True)
+            else:
+                st.info("No accuracy data available.")
+            
+            # Permutation Robustness Score
+            st.write("### 🔄 Permutation Robustness Score (PRS)")
+            st.write("*Consistency when MCQ choices are reordered across different versions*")
+            
+            prs = metrics["permutation_robustness"]
+            if prs:
+                prs_df = pd.DataFrame(list(prs.items()), columns=["Model", "PRS (%)"])
+                prs_df = prs_df.sort_values("PRS (%)", ascending=False)
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.bar_chart(prs_df.set_index("Model")["PRS (%)"])
+                with col2:
+                    st.dataframe(prs_df, use_container_width=True)
+                    
+                # Interpretation
+                avg_prs = prs_df["PRS (%)"].mean()
+                if avg_prs >= 80:
+                    st.success(f"🎯 Excellent robustness (avg: {avg_prs:.1f}%)")
+                elif avg_prs >= 60:
+                    st.warning(f"⚠️ Moderate robustness (avg: {avg_prs:.1f}%)")
+                else:
+                    st.error(f"❌ Low robustness (avg: {avg_prs:.1f}%)")
+            else:
+                st.info("No PRS data available. Need multiple question versions to calculate.")
+            
+            # Distractor Sensitivity Score
+            st.write("### 🎭 Distractor Sensitivity Score (DSS)")
+            st.write("*How often models are misled by 'None of the above' distractors (lower is better)*")
+            
+            dss = metrics["distractor_sensitivity"]
+            if dss:
+                dss_df = pd.DataFrame(list(dss.items()), columns=["Model", "DSS (%)"])
+                dss_df = dss_df.sort_values("DSS (%)", ascending=True)  # Lower is better
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.bar_chart(dss_df.set_index("Model")["DSS (%)"])
+                with col2:
+                    st.dataframe(dss_df, use_container_width=True)
+                    
+                # Interpretation
+                avg_dss = dss_df["DSS (%)"].mean()
+                if avg_dss <= 20:
+                    st.success(f"🎯 Low distractor sensitivity (avg: {avg_dss:.1f}%)")
+                elif avg_dss <= 40:
+                    st.warning(f"⚠️ Moderate distractor sensitivity (avg: {avg_dss:.1f}%)")
+                else:
+                    st.error(f"❌ High distractor sensitivity (avg: {avg_dss:.1f}%)")
+            else:
+                st.info("No DSS data available. Need questions with 'None of the above' options.")
+            
+            # RAG Improvement Delta
+            st.write("### 🚀 RAG Improvement Delta (ΔRAG)")
+            st.write("*Change in accuracy when using RAG vs standard approach*")
+            
+            rag_delta = metrics["rag_improvement_delta"]
+            if rag_delta:
+                delta_df = pd.DataFrame(list(rag_delta.items()), columns=["Model", "ΔRAG (%)"])
+                delta_df = delta_df.sort_values("ΔRAG (%)", ascending=False)
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    # Color-coded bar chart
+                    chart_data = delta_df.set_index("Model")["ΔRAG (%)"]
+                    st.bar_chart(chart_data)
+                with col2:
+                    # Add color indicators
+                    for _, row in delta_df.iterrows():
+                        delta_val = row["ΔRAG (%)"]
+                        if delta_val > 0:
+                            st.success(f"🟢 {row['Model']}: +{delta_val:.1f}%")
+                        elif delta_val < 0:
+                            st.error(f"🔴 {row['Model']}: {delta_val:.1f}%")
+                        else:
+                            st.info(f"⚪ {row['Model']}: {delta_val:.1f}%")
+                
+                # Overall RAG impact
+                avg_delta = delta_df["ΔRAG (%)"].mean()
+                positive_models = len(delta_df[delta_df["ΔRAG (%)"] > 0])
+                total_models = len(delta_df)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("📈 Avg RAG Impact", f"{avg_delta:.1f}%")
+                with col2:
+                    st.metric("✅ Models Improved", f"{positive_models}/{total_models}")
+                with col3:
+                    improvement_rate = (positive_models / total_models) * 100 if total_models > 0 else 0
+                    st.metric("🎯 Improvement Rate", f"{improvement_rate:.1f}%")
+            else:
+                st.info("No RAG delta data available. Need both standard and RAG test results.")
+            
+            # Performance by Topic
+            st.subheader("📚 Performance by Topic")
+            
+            topic_performance = metrics["performance_by_topic"]
+            if not topic_performance.empty:
+                # Overall topic performance
+                st.write("### 📊 Model Accuracy by Topic")
+                
+                # Pivot table for better visualization
+                topic_pivot = topic_performance.pivot(index="topic", columns="model", values="Accuracy")
+                
+                if not topic_pivot.empty:
+                    st.dataframe(topic_pivot, use_container_width=True)
+                    
+                    # Topic difficulty ranking
+                    st.write("### 📈 Topic Difficulty Ranking")
+                    topic_difficulty = topic_performance.groupby("topic")["Accuracy"].mean().sort_values(ascending=True)
+                    
+                    difficulty_df = pd.DataFrame({
+                        "Topic": topic_difficulty.index,
+                        "Avg Accuracy (%)": topic_difficulty.values
+                    }).reset_index(drop=True)
+                    
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.bar_chart(topic_difficulty)
+                    with col2:
+                        st.dataframe(difficulty_df, use_container_width=True)
+                        
+                        # Difficulty interpretation
+                        easiest_topic = difficulty_df.iloc[-1]["Topic"]
+                        hardest_topic = difficulty_df.iloc[0]["Topic"]
+                        
+                        st.success(f"🟢 Easiest: {easiest_topic}")
+                        st.error(f"🔴 Hardest: {hardest_topic}")
+                
+                # Detailed topic performance table
+                st.write("### 📋 Detailed Performance by Topic")
+                st.dataframe(topic_performance, use_container_width=True)
+            else:
+                st.info("No topic performance data available.")
+            
+            # Version-Specific Performance Analysis
+            st.subheader("🔢 Performance by Question Version")
+            
+            version_metrics = metrics["version_specific_metrics"]
+            if version_metrics:
+                st.write("### 📊 Accuracy by Question Version")
+                st.write("*V1: Original, V2: Reordered MCQ, V3: MCQ with 'None of Above', V4: True/False*")
+                
+                # Create a comprehensive version performance table
+                version_data = []
+                for model, versions in version_metrics.items():
+                    for version, accuracy in versions.items():
+                        version_data.append({
+                            "Model": model,
+                            "Version": version,
+                            "Accuracy (%)": accuracy
+                        })
+                
+                if version_data:
+                    version_df = pd.DataFrame(version_data)
+                    
+                    # Pivot table for better visualization
+                    version_pivot = version_df.pivot(index="Model", columns="Version", values="Accuracy (%)")
+                    
+                    if not version_pivot.empty:
+                        st.dataframe(version_pivot, use_container_width=True)
+                        
+                        # Version difficulty analysis
+                        st.write("### 📈 Version Difficulty Analysis")
+                        version_difficulty = version_df.groupby("Version")["Accuracy (%)"].agg(['mean', 'std', 'count']).round(2)
+                        version_difficulty.columns = ["Avg Accuracy (%)", "Std Dev", "Test Count"]
+                        version_difficulty = version_difficulty.sort_values("Avg Accuracy (%)", ascending=True)
+                        
+                        col1, col2 = st.columns([2, 1])
+                        with col1:
+                            st.bar_chart(version_difficulty["Avg Accuracy (%)"])
+                        with col2:
+                            st.dataframe(version_difficulty, use_container_width=True)
+                            
+                            # Version interpretation
+                            if not version_difficulty.empty:
+                                easiest_version = version_difficulty.index[-1]
+                                hardest_version = version_difficulty.index[0]
+                                
+                                st.success(f"🟢 Easiest: {easiest_version}")
+                                st.error(f"🔴 Hardest: {hardest_version}")
+                        
+                        # Model consistency across versions
+                        st.write("### 🔄 Model Consistency Across Versions")
+                        
+                        # Calculate standard deviation of accuracy across versions for each model
+                        model_consistency = []
+                        for model in version_pivot.index:
+                            model_accuracies = version_pivot.loc[model].dropna()
+                            if len(model_accuracies) > 1:
+                                consistency_score = 100 - model_accuracies.std()  # Higher score = more consistent
+                                model_consistency.append({
+                                    "Model": model,
+                                    "Consistency Score": max(0, consistency_score),  # Ensure non-negative
+                                    "Versions Tested": len(model_accuracies),
+                                    "Accuracy Range": f"{model_accuracies.min():.1f}% - {model_accuracies.max():.1f}%"
+                                })
+                        
+                        if model_consistency:
+                            consistency_df = pd.DataFrame(model_consistency)
+                            consistency_df = consistency_df.sort_values("Consistency Score", ascending=False)
+                            
+                            col1, col2 = st.columns([2, 1])
+                            with col1:
+                                st.bar_chart(consistency_df.set_index("Model")["Consistency Score"])
+                            with col2:
+                                st.dataframe(consistency_df, use_container_width=True)
+                                
+                                # Consistency interpretation
+                                avg_consistency = consistency_df["Consistency Score"].mean()
+                                if avg_consistency >= 80:
+                                    st.success(f"🎯 High consistency (avg: {avg_consistency:.1f})")
+                                elif avg_consistency >= 60:
+                                    st.warning(f"⚠️ Moderate consistency (avg: {avg_consistency:.1f})")
+                                else:
+                                    st.error(f"❌ Low consistency (avg: {avg_consistency:.1f})")
+                
+                # Version-specific insights
+                st.write("### 💡 Version-Specific Insights")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write("**📊 Version Characteristics:**")
+                    st.write("- **V1 (Original)**: Baseline performance")
+                    st.write("- **V2 (Reordered)**: Tests option order bias")
+                    st.write("- **V3 (None of Above)**: Tests distractor sensitivity")
+                    st.write("- **V4 (True/False)**: Tests format adaptation")
+                
+                with col2:
+                    st.write("**🎯 Performance Expectations:**")
+                    if version_data:
+                        v1_avg = version_df[version_df["Version"] == "V1 (Original)"]["Accuracy (%)"].mean()
+                        v2_avg = version_df[version_df["Version"] == "V2 (Reordered)"]["Accuracy (%)"].mean()
+                        v3_avg = version_df[version_df["Version"] == "V3 (None of Above)"]["Accuracy (%)"].mean()
+                        v4_avg = version_df[version_df["Version"] == "V4 (True/False)"]["Accuracy (%)"].mean()
+                        
+                        if not pd.isna(v1_avg) and not pd.isna(v2_avg):
+                            if abs(v1_avg - v2_avg) < 5:
+                                st.success("✅ Low option order bias")
+                            else:
+                                st.warning("⚠️ Significant option order bias detected")
+                        
+                        if not pd.isna(v3_avg):
+                            if v3_avg < 80:
+                                st.info("📊 'None of above' creates difficulty")
+                            else:
+                                st.success("✅ Resistant to distractor options")
+                        
+                        if not pd.isna(v4_avg):
+                            if v4_avg > 85:
+                                st.success("✅ Good format adaptation")
+                            else:
+                                st.info("📊 Format change affects performance")
+            else:
+                st.info("No version-specific data available. Test questions with multiple versions to see this analysis.")
+            
+            # Model Comparison Summary
+            st.subheader("🏆 Model Ranking Summary")
+            
+            # Combine all metrics for ranking
+            ranking_data = []
+            for model in basic_acc.keys():
+                base_model = model.replace(" (RAG)", "")
+                
+                ranking_data.append({
+                    "Model": model,
+                    "Basic Accuracy (%)": basic_acc.get(model, 0),
+                    "PRS (%)": prs.get(model, 0),
+                    "DSS (%)": dss.get(model, 0),  # Lower is better
+                    "ΔRAG (%)": rag_delta.get(base_model, 0) if not model.endswith("(RAG)") else 0
+                })
+            
+            if ranking_data:
+                ranking_df = pd.DataFrame(ranking_data)
+                
+                # Calculate composite score (normalize and weight metrics)
+                ranking_df["Composite Score"] = (
+                    ranking_df["Basic Accuracy (%)"] * 0.4 +  # 40% weight
+                    ranking_df["PRS (%)"] * 0.3 +              # 30% weight
+                    (100 - ranking_df["DSS (%)"]) * 0.2 +      # 20% weight (inverted)
+                    ranking_df["ΔRAG (%)"] * 0.1               # 10% weight
+                )
+                
+                ranking_df = ranking_df.sort_values("Composite Score", ascending=False)
+                ranking_df["Rank"] = range(1, len(ranking_df) + 1)
+                
+                # Reorder columns
+                display_cols = ["Rank", "Model", "Composite Score", "Basic Accuracy (%)", "PRS (%)", "DSS (%)", "ΔRAG (%)"]
+                st.dataframe(ranking_df[display_cols].round(2), use_container_width=True)
+                
+                # Top performer highlight
+                top_model = ranking_df.iloc[0]
+                st.success(f"🏆 **Top Performer:** {top_model['Model']} (Score: {top_model['Composite Score']:.1f})")
+            
+            # Export functionality
+            st.subheader("📥 Export Benchmark Results")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("📊 Export All Metrics"):
+                    # Combine all metrics into one comprehensive report
+                    export_data = {
+                        "Basic Accuracy": basic_acc,
+                        "Permutation Robustness": prs,
+                        "Distractor Sensitivity": dss,
+                        "RAG Improvement Delta": rag_delta
+                    }
+                    
+                    buffer = io.StringIO()
+                    buffer.write("COMP430 LLM Benchmark Report\n")
+                    buffer.write("=" * 50 + "\n\n")
+                    
+                    for metric_name, metric_data in export_data.items():
+                        buffer.write(f"{metric_name}:\n")
+                        for model, score in metric_data.items():
+                            buffer.write(f"  {model}: {score:.2f}%\n")
+                        buffer.write("\n")
+                    
+                    # Add version-specific metrics
+                    if version_metrics:
+                        buffer.write("Version-Specific Performance:\n")
+                        for model, versions in version_metrics.items():
+                            buffer.write(f"  {model}:\n")
+                            for version, accuracy in versions.items():
+                                buffer.write(f"    {version}: {accuracy:.2f}%\n")
+                        buffer.write("\n")
+                    
+                    st.download_button(
+                        label="📁 Download Benchmark Report",
+                        data=buffer.getvalue(),
+                        file_name=f"benchmark_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        mime="text/plain"
+                    )
+            
+            with col2:
+                if st.button("📋 Export Topic Performance"):
+                    if not topic_performance.empty:
+                        buffer = io.StringIO()
+                        topic_performance.to_csv(buffer, index=False)
+                        st.download_button(
+                            label="📁 Download Topic Analysis",
+                            data=buffer.getvalue(),
+                            file_name=f"topic_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.warning("⚠️ No topic performance data to export.")
+            
+            with col3:
+                if st.button("🔢 Export Version Analysis"):
+                    if version_metrics:
+                        # Convert version metrics to CSV format
+                        version_export_data = []
+                        for model, versions in version_metrics.items():
+                            for version, accuracy in versions.items():
+                                version_export_data.append({
+                                    "Model": model,
+                                    "Version": version,
+                                    "Accuracy (%)": accuracy
+                                })
+                        
+                        if version_export_data:
+                            version_export_df = pd.DataFrame(version_export_data)
+                            buffer = io.StringIO()
+                            version_export_df.to_csv(buffer, index=False)
+                            st.download_button(
+                                label="📁 Download Version Analysis",
+                                data=buffer.getvalue(),
+                                file_name=f"version_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.warning("⚠️ No version data to export.")
                     else:
                         st.warning("⚠️ No version metrics to export.")
 
