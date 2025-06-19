@@ -1,6 +1,7 @@
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Python
 __pycache__
@@ -54,4 +55,34 @@ data/
 *.csv
 *.json
 *.log
-node_modules/ 
+node_modules/
+
+# Documentation
+README.md
+DEPLOYMENT.md
+*.md
+
+# Development files
+tests/
+test_*.py
+*_test.py
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Large model files (if any)
+*.bin
+*.safetensors
+models/
+checkpoints/
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3 
