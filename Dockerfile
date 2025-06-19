@@ -47,12 +47,12 @@ RUN useradd -m -u 1000 streamlit && \
     chown -R streamlit:streamlit /app
 USER streamlit
 
-# Expose port
+# Expose port (will be overridden by cloud platform)
 EXPOSE 8501
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8501}/_stcore/health || exit 1
 
-# Start command with proper signal handling
-CMD ["streamlit", "run", "app/main.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"] 
+# Start command with proper signal handling and PORT support
+CMD streamlit run app/main.py --server.port=${PORT:-8501} --server.address=0.0.0.0 --server.headless=true 
