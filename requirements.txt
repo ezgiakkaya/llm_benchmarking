@@ -1,5 +1,5 @@
 # Core Streamlit and web framework
-streamlit==1.32.0
+streamlit==1.33.0
 
 # Data manipulation and analysis
 pandas==2.2.1
@@ -40,5 +40,4 @@ seaborn==0.12.2
 plotly==5.17.0
 
 # Additional utilities
-packaging>=24.2
 typing-extensions>=4.0.0 

@@ -28,11 +28,13 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip and install wheel for better package installation
 RUN pip install --upgrade pip setuptools wheel
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy requirements files first for better caching
+COPY requirements*.txt ./
 
-# Install Python dependencies with optimizations
-RUN pip install --no-cache-dir --compile -r requirements.txt
+# Install Python dependencies with fallback for conflicts
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Falling back to minimal requirements..." && \
+     pip install --no-cache-dir -r requirements-minimal.txt)
 
 # Copy application code
 COPY . .
