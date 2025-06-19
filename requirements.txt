@@ -29,7 +29,7 @@ scikit-learn==1.3.0
 pinecone-client==3.0.2
 
 # Structured output and validation
-instructor==1.0.0
+instructor==1.8.3
 pydantic==2.5.0
 
 # HTTP requests

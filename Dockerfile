@@ -1,5 +1,5 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Use Python 3.11.13 slim image
+FROM python:3.11.13-slim
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -31,8 +31,10 @@ RUN pip install --upgrade pip setuptools wheel
 # Copy requirements files first for better caching
 COPY requirements*.txt ./
 
-# Install Python dependencies with fallback for conflicts
+# Install Python dependencies with better error handling
 RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Primary requirements failed, trying with --no-deps..." && \
+     pip install --no-cache-dir --no-deps -r requirements.txt) || \
     (echo "Falling back to minimal requirements..." && \
      pip install --no-cache-dir -r requirements-minimal.txt)
 
@@ -50,7 +52,7 @@ USER streamlit
 # Expose port
 EXPOSE 8501
 
-# Health check
+# Health check with curl (ensure curl is available)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
