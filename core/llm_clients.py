@@ -13,7 +13,6 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Define available Groq models with their details
 GROQ_MODELS = {
     "llama3-70b-8192": {
         "name": "Llama3 70B",
@@ -32,7 +31,6 @@ GROQ_MODELS = {
     }
 }
 
-# Initialize Groq client with instructor
 client = instructor.from_groq(groq.Groq(api_key=GROQ_API_KEY))
 
 def format_mcq_prompt(question_text: str, options: list, correct_answer: str) -> str:

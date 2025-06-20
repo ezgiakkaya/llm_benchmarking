@@ -9,7 +9,6 @@ from groq import Groq
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 
-# Load environment variables
 load_dotenv()
 
 class RAGPipeline:

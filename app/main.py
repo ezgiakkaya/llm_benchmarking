@@ -40,11 +40,6 @@ except Exception as e:
     st.error(f"⚠️ Error initializing OpenAI client: {str(e)}")
     st.stop()
 
-# MongoDB setup is now handled in core.database
-# client = MongoClient("mongodb://localhost:27017/")
-# db = client["comp430_benchmark"]
-# questions = db["questions"]
-# responses = db["responses"]
 
 # Question schema validation
 def validate_question(question_data):

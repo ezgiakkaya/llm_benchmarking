@@ -1,11 +1,8 @@
 from pymongo import MongoClient
 
-# Centralized MongoDB client
-# All other parts of the application should import the client and db from here.
 client = MongoClient("mongodb://localhost:27017/")
 db = client["comp430_benchmark"]
 
-# Collections
 questions_collection = db["questions"]
 responses_collection = db["responses"]
 

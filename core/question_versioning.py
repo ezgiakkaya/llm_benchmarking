@@ -7,21 +7,11 @@ import requests
 from dotenv import load_dotenv
 import re
 
-# No longer need direct llm_call_for_generation from here, assuming it's handled by a dedicated client
-# If still needed, it should be imported from core.llm_clients
 from .llm_clients import llm_call_for_generation
 
 load_dotenv()
 
-# The API key and headers are now managed in llm_clients.py
-# GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-# HEADERS_GROQ = {
-#     "Authorization": f"Bearer {GROQ_API_KEY}",
-#     "Content-Type": "application/json"
-# }
-# LLM_MODEL_FOR_GENERATION = "llama3-70b-8192"
 
-# Removed llm_call_for_generation function as it will now be imported from llm_clients.py
 
 def get_option_letter(index):
     """Converts a 0-based index to an option letter (0->A, 1->B)."""
@@ -96,7 +86,6 @@ def get_correct_answer_text_from_option_format(options, option_format_answer):
     return None
 
 
-# --- Version Generation Functions ---
 
 def generate_v1_original(original_q):
     """Version 1: Original question, q_correct_answer standardized for MCQ."""
@@ -273,7 +262,6 @@ def write_questions_to_csv(questions_list, filename="generated_question_versions
             writer.writerow(q_to_write)
     print(f"Successfully wrote questions to {filename}")
 
-# NEW function to be called from app.py
 def generate_all_versions_for_question(original_question_dict):
     """
     Takes a single original question dictionary, generates all its versions (V1-V5).
