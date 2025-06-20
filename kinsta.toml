@@ -19,6 +19,10 @@ healthCheckPath = "/_stcore/health"
 # Port configuration
 port = "${PORT}"
 
+# WebSocket configuration
+websockets = true
+proxyWebsockets = true
+
 # Container settings
 [container]
 # Use Docker for deployment
@@ -26,4 +30,12 @@ dockerfile = "Dockerfile"
 
 # Resource limits
 memory = "1Gi"
-cpu = "0.5" 
+cpu = "0.5"
+
+# Network settings
+[network]
+# Enable WebSocket support
+websocketSupport = true
+proxyTimeout = "60s"
+readTimeout = "60s"
+writeTimeout = "60s" 

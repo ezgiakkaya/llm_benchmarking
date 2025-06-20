@@ -1,15 +1,32 @@
 [server]
-port = 8602
-address = "0.0.0.0"
+# Server configuration for cloud deployment
 headless = true
-enableCORS = false
+runOnSave = false
+port = 8080
+address = "0.0.0.0"
+
+# WebSocket configuration for cloud deployment
+enableCORS = true
 enableXsrfProtection = false
+enableWebsocketCompression = false
+
+# Base URL configuration for reverse proxy
+baseUrlPath = ""
 
 [browser]
 gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8080
+
+[client]
+# Client configuration for better connectivity
+caching = true
+displayEnabled = true
+showErrorDetails = true
 
 [theme]
-primaryColor = "#FF4B4B"
+# Optional: Set a custom theme
+primaryColor = "#FF6B6B"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730" 
