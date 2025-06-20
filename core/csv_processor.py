@@ -13,12 +13,12 @@ def parse_csv_to_questions(csv_path: str) -> List[Dict[str, Any]]:
     with open(csv_path, 'r', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            # Convert q_options from string to list if it's a JSON string
+          
             if isinstance(row['q_options'], str):
                 try:
-                    # Clean the string by removing escaped quotes and extra spaces
+                  
                     cleaned_options = row['q_options'].replace('\\"', '"').strip()
-                    # Remove any leading/trailing quotes
+                  
                     if cleaned_options.startswith('"') and cleaned_options.endswith('"'):
                         cleaned_options = cleaned_options[1:-1]
                     row['q_options'] = json.loads(cleaned_options)
@@ -26,11 +26,10 @@ def parse_csv_to_questions(csv_path: str) -> List[Dict[str, Any]]:
                     print(f"Warning: Could not parse q_options for question {row['q_id']}: {str(e)}")
                     print(f"Raw options string: {row['q_options']}")
                     row['q_options'] = []
-            
-            # Clean up the correct answer if it has escaped quotes
+
             if isinstance(row['q_correct_answer'], str):
                 row['q_correct_answer'] = row['q_correct_answer'].replace('\\"', '').strip()
-                # Remove any leading/trailing quotes
+              
                 if row['q_correct_answer'].startswith('"') and row['q_correct_answer'].endswith('"'):
                     row['q_correct_answer'] = row['q_correct_answer'][1:-1]
             
@@ -45,9 +44,9 @@ def save_questions_to_database(questions: List[Dict[str, Any]]) -> None:
         # Generate all versions for the question
         versions = generate_all_versions_for_question(question)
         
-        # Save each version to the database
+      
         for version in versions:
-            # Convert q_options back to string for database storage
+          
             if isinstance(version.get('q_options'), list):
                 version['q_options'] = json.dumps(version['q_options'])
             

@@ -8,7 +8,7 @@ import sys
 import os
 import argparse
 
-# Ensure the script can find the 'core' module
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.database import questions_collection
@@ -24,7 +24,7 @@ def list_question_ids(prefix=None):
     else:
         print("🔍 Finding all question IDs in the database...")
 
-    # Fetch only the q_id field and sort them
+
     q_ids = sorted(questions_collection.distinct('q_id', query))
 
     if not q_ids:

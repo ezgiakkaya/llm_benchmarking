@@ -10,7 +10,7 @@ def setup_deployment_env():
     print("🚀 COMP430 LLM Benchmark - Deployment Setup")
     print("="*50)
     
-    # Get MongoDB Atlas connection string
+
     print("\n📊 MongoDB Atlas Configuration:")
     print("1. Go to your Atlas dashboard")
     print("2. Ensure database user is created with read/write permissions")
@@ -28,7 +28,7 @@ def setup_deployment_env():
     openai_key = input("Enter OpenAI API key (or press Enter to skip): ").strip() or "not-set"
     groq_key = input("Enter Groq API key (or press Enter to skip): ").strip() or "not-set"
     
-    # Create environment file for Kinsta
+
     env_content = f"""# MongoDB Configuration
 MONGODB_URI={mongodb_uri}
 DATABASE_NAME=comp430_benchmark
@@ -42,13 +42,13 @@ GROQ_API_KEY={groq_key}
 NODE_ENV=production
 """
     
-    # Save to file
+
     with open('.env.kinsta', 'w') as f:
         f.write(env_content)
     
     print("\n✅ Environment configuration saved to .env.kinsta")
     
-    # Display Kinsta deployment instructions
+ 
     print("\n🚀 Kinsta Deployment Instructions:")
     print("="*50)
     print("1. Go to your Kinsta application dashboard")
@@ -67,7 +67,7 @@ NODE_ENV=production
     print("\n4. Save and redeploy your application")
     print("5. Your app will switch from demo mode to full functionality")
     
-    # Test local connection if MongoDB URI provided
+  
     if mongodb_uri != "not-set" and "mongodb" in mongodb_uri.lower():
         print(f"\n🧪 Testing MongoDB connection...")
         try:

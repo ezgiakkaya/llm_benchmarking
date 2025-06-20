@@ -9,7 +9,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
-# Ensure the script can find the 'core' module
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.database import questions_collection
@@ -20,7 +20,7 @@ def store_question_versions(question_versions, original_q_id):
     stored_count = 0
     replaced_count = 0
     
-    # Get all existing versions for this original_q_id to find which ones to remove
+ 
     existing_versions_cursor = questions_collection.find(
         {"original_q_id": original_q_id},
         {"q_id": 1, "q_version": 1}
@@ -35,10 +35,10 @@ def store_question_versions(question_versions, original_q_id):
             version_dict["original_q_id"] = original_q_id
             version_dict["created_at"] = datetime.now().isoformat()
             
-            # Form a unique identifier for the generated version
+           
             generated_version_ids.add((version_dict['q_id'], version_dict['q_version']))
 
-            # Use update_one with upsert=True to either insert or replace
+         
             result = questions_collection.update_one(
                 {"q_id": version_dict["q_id"], "q_version": version_dict["q_version"]},
                 {"$set": version_dict},
@@ -53,7 +53,7 @@ def store_question_versions(question_versions, original_q_id):
         except Exception as e:
             print(f"❌ Error storing version {version_dict.get('q_version')} of {version_dict.get('q_id')}: {e}")
 
-    # Identify and remove any old versions that were not in the new generation batch
+
     versions_to_delete = existing_db_versions - generated_version_ids
     if versions_to_delete:
         print(f"🧹 Found {len(versions_to_delete)} old version(s) to remove...")
@@ -95,13 +95,12 @@ def process_questions_from_csv(file_path):
         print(f"\n📝 Processing question {i}/{len(questions_list)}: {original_q_id}")
         
         try:
-            # Generate all versions for this question
+         
             generated_versions = generate_all_versions_for_question(question)
             
             if generated_versions:
                 print(f"   -> Generated {len(generated_versions)} versions.")
-                
-                # Store/replace versions in database
+            
                 stored, replaced = store_question_versions(generated_versions, original_q_id)
                 total_stored += stored
                 total_replaced += replaced
@@ -121,7 +120,7 @@ def process_questions_from_csv(file_path):
     print(f"   - Replaced/Updated: {total_replaced} existing versions")
 
 if __name__ == "__main__":
-    # The script expects the path to the CSV file as a command-line argument.
+    
     if len(sys.argv) < 2:
         print("Usage: python scripts/generate_versions.py <path_to_csv_file>")
         print("Example: python scripts/generate_versions.py data/mfa_questions.csv")

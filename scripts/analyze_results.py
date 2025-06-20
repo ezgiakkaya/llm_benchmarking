@@ -9,7 +9,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
-# Ensure the script can find the 'core' module
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.database import questions_collection, responses_collection
@@ -39,7 +39,7 @@ def analyze_model_performance():
         print("⚠️ No responses found in the database. Nothing to analyze.")
         return
 
-    # Create a lookup dictionary for questions for faster access
+
     questions_lookup = {
         (q['q_id'], str(q.get('q_version', '1'))): q for q in all_questions_list
     }
@@ -103,7 +103,7 @@ def analyze_model_performance():
     # Convert to DataFrame for easier analysis
     df = pd.DataFrame(results)
     
-    # --- Generate Reports ---
+
     output_dir = "reports"
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

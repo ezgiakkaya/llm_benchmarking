@@ -3,18 +3,18 @@ import sys
 import time
 from datetime import datetime
 from dotenv import load_dotenv
-# Use the shared database collections
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.database import questions_collection, responses_collection
 from core.llm_clients import query_groq
 
-# Load environment variables
+
 load_dotenv()
 
-# Define the question ID to query
-QUESTION_ID = "LEC8_020"  # Change this to the desired question ID
 
-# Define the models to use
+QUESTION_ID = "LEC8_020" 
+
+
 MODELS = [
     "llama3-70b-8192",
     "gemma2-9b-it",
@@ -27,7 +27,7 @@ def get_question_from_db(q_id):
     if not question:
         print(f"No question found with ID: {q_id}")
         sys.exit(1)
-    # If q_options is not present, use the options from the first version
+   
     if "q_options" not in question:
         versions = list(questions_collection.find({"q_id": q_id}))
         if versions:
@@ -72,13 +72,13 @@ def save_response_to_db(q_id, q_version, model_id, response, selected_option):
     responses_collection.insert_one(response_doc)
 
 def main():
-    # Retrieve all versions of the question from the database
+   
     versions = get_all_versions_from_db(QUESTION_ID)
     for question in versions:
         version = question.get("q_version", "N/A")
         prompt = format_prompt(question)
         print(f"\nProcessing version: {version}")
-        # Query each model and save responses
+        
         for model_id in MODELS:
             print(f"Querying model: {model_id}")
             result = query_groq(prompt, model_id, "MCQ", question.get("q_options", []))

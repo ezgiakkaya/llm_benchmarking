@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-# Add the project root to Python path
+
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
@@ -16,13 +16,13 @@ def test_csv_parsing():
     print("-" * 50)
     
     try:
-        # Parse the CSV file
+       
         questions = parse_csv_to_questions(csv_path)
         
-        # Print summary
+       
         print(f"\nSuccessfully parsed {len(questions)} questions")
         
-        # Print first question as sample
+      
         if questions:
             print("\nSample question:")
             print(f"ID: {questions[0]['q_id']}")

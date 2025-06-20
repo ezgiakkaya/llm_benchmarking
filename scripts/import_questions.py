@@ -7,16 +7,16 @@ from core.database import get_db_connection
 def import_questions_from_csv(csv_path: str):
     """Import questions from a CSV file into the database."""
     try:
-        # Read the CSV file
+
         df = pd.read_csv(csv_path)
         
-        # Connect to the database
+
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Process each row
+
         for _, row in df.iterrows():
-            # Convert q_options from string to JSON if it's a string
+       
             if isinstance(row['q_options'], str):
                 try:
                     options = json.loads(row['q_options'])
@@ -39,7 +39,7 @@ def import_questions_from_csv(csv_path: str):
                 row['q_correct_answer']
             ))
         
-        # Commit the changes
+
         conn.commit()
         print(f"Successfully imported questions from {csv_path}")
         
@@ -52,7 +52,7 @@ def import_questions_from_csv(csv_path: str):
             conn.close()
 
 def main():
-    # Get all CSV files from the data directory
+   
     data_dir = Path("data")
     csv_files = list(data_dir.glob("*_questions.csv"))
     
@@ -60,7 +60,7 @@ def main():
         print("No question CSV files found in the data directory")
         return
     
-    # Process each CSV file
+   
     for csv_file in csv_files:
         print(f"Processing {csv_file.name}...")
         import_questions_from_csv(str(csv_file))

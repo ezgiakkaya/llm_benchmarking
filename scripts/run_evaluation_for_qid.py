@@ -14,7 +14,7 @@ def run_evaluation_for_qid(q_id, models_to_test=None):
     print(f"🚀 Starting LLM Evaluation for Question ID: {q_id}")
     print("=" * 70)
 
-    # Determine which models to run
+   
     if models_to_test:
         target_models = {k: v for k, v in GROQ_MODELS.items() if v['name'] in models_to_test}
         if not target_models:

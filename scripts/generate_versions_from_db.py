@@ -10,12 +10,12 @@ import os
 import argparse
 from datetime import datetime
 
-# Ensure the script can find the 'core' module
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.database import questions_collection
 from core.question_versioning import (
-    generate_v1_original,  # Used for standardization
+    generate_v1_original, 
     generate_v2_reordered_mcq,
     generate_v3_mcq_with_nota,
     generate_v4_true_false_version
@@ -61,7 +61,7 @@ def generate_versions_from_db(q_ids, versions_to_run=None):
                 if v_key in all_possible_versions:
                     name, func = all_possible_versions[v_key]
                     versions_to_generate[name] = func
-        else: # Default to all if not specified
+        else: 
             versions_to_generate = {name: func for name, func in all_possible_versions.values()}
         
         if not versions_to_generate:
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    # Combine IDs from command line and file
+
     q_ids_to_process = args.q_ids
     if args.file:
         try:

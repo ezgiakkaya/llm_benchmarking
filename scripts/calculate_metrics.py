@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from typing import Dict, List, Tuple
 
-# Add project root to sys.path
+
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
@@ -41,7 +41,7 @@ def calculate_basic_accuracy(model_name: str = None, question_range: Tuple[str, 
         print("⚠️ No responses found in database.")
         return pd.DataFrame()
     
-    # Filter responses for specified question range if provided
+
     if question_range:
         start_id, end_id = question_range
         responses = [
@@ -55,7 +55,7 @@ def calculate_basic_accuracy(model_name: str = None, question_range: Tuple[str, 
         q_id = response.get("question_id")
         q_version = str(response.get("version", "1"))
         
-        # Find corresponding question
+
         question = questions_collection.find_one({
             "q_id": q_id,
             "q_version": q_version
@@ -85,7 +85,7 @@ def calculate_basic_accuracy(model_name: str = None, question_range: Tuple[str, 
             model_answer_bool = tf_data.get("answer", False)
             confidence = tf_data.get("confidence", 0)
             
-            # Convert correct answer to boolean
+
             correct_bool = str(correct_answer).lower() == "true"
             is_correct = (correct_bool == model_answer_bool)
             

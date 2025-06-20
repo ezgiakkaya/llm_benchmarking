@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from tqdm import tqdm
 
-# Ensure the script can find the 'core' module
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.database import questions_collection, responses_collection
@@ -27,7 +27,7 @@ def run_evaluation_for_all_questions(models_to_test=None):
     print("🚀 Starting LLM Evaluation for All Questions...")
     print("=" * 70)
 
-    # Determine which models to run
+   
     if models_to_test:
         target_models = {k: v for k, v in GROQ_MODELS.items() if v['name'] in models_to_test}
         if not target_models:
