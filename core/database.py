@@ -72,7 +72,7 @@ def initialize_database():
 
 def ensure_question_versioning():
     """Ensure all questions have original_q_id field for version tracking."""
-    if not questions_collection:
+    if questions_collection is None:
         logger.warning("⚠️  Skipping question versioning - no database connection")
         return
     
