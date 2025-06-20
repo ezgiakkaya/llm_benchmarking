@@ -188,8 +188,6 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 🗄️ Database Status")
 if db_status["status"] == "connected":
     st.sidebar.success("✅ Connected")
-    st.sidebar.caption(f"URI: {db_status['uri']}")
-    st.sidebar.caption(f"DB: {db_status['database']}")
 else:
     st.sidebar.error("❌ Disconnected")
     st.sidebar.caption("Running in demo mode")
