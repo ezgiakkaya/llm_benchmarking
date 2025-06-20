@@ -1552,13 +1552,13 @@ elif page == "📚 Create Questions":
                     text = ""
                     for page in pdf_reader.pages:
                         text += page.extract_text()
-                    
                     filename = Path(file.name).stem
-                        lecture_number = lecture_number[1:]
+                    lecture_number = filename.split('_')[0] if '_' in filename else filename
+                    lecture_number = lecture_number[1:] if lecture_number.startswith('L') else lecture_number
                     
                     prompt = f"""I will give you a lecture slides from {filename}. You will read it and you will prepare 20 MCQ's. 
                     You will prepare the questions to:
-                    1- measure the memoization of the student
+                    1- measure the memorization of the student
                     2- measure the understanding of the student of the core concepts
                     3- measure the robustness of a student to different distractor, tricky questions
                     4- measure the students attention in details.
