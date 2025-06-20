@@ -18,12 +18,6 @@ gatherUsageStats = false
 serverAddress = "0.0.0.0"
 serverPort = 8080
 
-[client]
-# Client configuration for better connectivity
-caching = true
-displayEnabled = true
-showErrorDetails = true
-
 [theme]
 # Optional: Set a custom theme
 primaryColor = "#FF6B6B"
