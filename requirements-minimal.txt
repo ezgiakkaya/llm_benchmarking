@@ -28,6 +28,7 @@ httpx>=0.24.0
 idna>=3.0
 anyio>=3.0.0
 sniffio>=1.0.0
+distro>=1.0.0
 
 # Database
 pymongo>=4.0.0,<5.0.0
