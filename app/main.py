@@ -19,6 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import from the new 'core' module
 from core.database import questions_collection as questions
 from core.database import responses_collection as responses
+from core.database import is_database_connected, get_database_status
 from core.llm_clients import query_groq, query_groq_with_rag, GROQ_MODELS
 from core.models import LLMResponse
 from core.question_versioning import generate_all_versions_for_question
@@ -172,12 +173,39 @@ st.set_page_config(
 st.title("🚀 COMP430 LLM Benchmark Dashboard")
 st.markdown("**Advanced AI Model Comparison with Structured Responses & Confidence Scoring**")
 
+# Database status indicator
+db_status = get_database_status()
+if db_status["status"] == "connected":
+    st.success(f"🗄️ Database: {db_status['message']}")
+else:
+    st.warning(f"⚠️ Database: {db_status['message']}")
+
 # Sidebar for navigation
 st.sidebar.title("🎯 Navigation")
+
+# Add database status to sidebar as well
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🗄️ Database Status")
+if db_status["status"] == "connected":
+    st.sidebar.success("✅ Connected")
+    st.sidebar.caption(f"URI: {db_status['uri']}")
+    st.sidebar.caption(f"DB: {db_status['database']}")
+else:
+    st.sidebar.error("❌ Disconnected")
+    st.sidebar.caption("Running in demo mode")
+st.sidebar.markdown("---")
+
 page = st.sidebar.radio("Go to", ["📝 Upload Questions", "🔬 Run Tests", "🔬 Run Tests with RAG", "📊 Results Dashboard", "🏆 Benchmark", "📈 Evaluate Metrics", "📚 Create Questions", "💾 Manage CSV Files", "📚 RAG System"])
 
 if page == "📝 Upload Questions":
     st.header("📝 Upload Questions")
+    
+    # Check if database is connected
+    if not is_database_connected():
+        st.error("❌ Database not connected. Cannot upload questions in demo mode.")
+        st.info("💡 To upload questions, please configure a MongoDB connection using the MONGODB_URI environment variable.")
+        st.code("export MONGODB_URI='mongodb://your-mongodb-connection-string'", language="bash")
+        st.stop()
     
     # Add tabs for single and batch upload
     tab1, tab2 = st.tabs(["Single Question Upload", "Batch Upload"])

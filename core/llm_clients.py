@@ -11,29 +11,49 @@ from .models import MCQAnswer, TrueFalseAnswer, ShortAnswer, LLMResponse
 
 load_dotenv()
 
+# API keys with error handling
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Define available Groq models with their details
+# Groq model configurations
 GROQ_MODELS = {
     "llama3-70b-8192": {
-        "name": "Llama3 70B",
+        "name": "Meta Llama 3 70B",
         "context_window": 8192,
         "max_completion_tokens": 8192
     },
-    "gemma2-9b-it": {
-        "name": "Gemma2 9B",
+    "llama3-8b-8192": {
+        "name": "Meta Llama 3 8B",
         "context_window": 8192,
         "max_completion_tokens": 8192
     },
-    "deepseek-r1-distill-llama-70b": {
-        "name": "Deepseek R1 Distill Llama 70B",
+    "mixtral-8x7b-32768": {
+        "name": "Mixtral 8x7B Instruct",
+        "context_window": 32768,
+        "max_completion_tokens": 32768
+    },
+    "gemma-7b-it": {
+        "name": "Google Gemma 7B",
         "context_window": 8192,
         "max_completion_tokens": 8192
     }
 }
 
-# Initialize Groq client with instructor
-client = instructor.from_groq(groq.Groq(api_key=GROQ_API_KEY))
+# Initialize Groq client with error handling
+client = None
+groq_available = False
+
+if GROQ_API_KEY:
+    try:
+        client = instructor.from_groq(groq.Groq(api_key=GROQ_API_KEY))
+        groq_available = True
+        print("✅ Groq client initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize Groq client: {e}")
+        groq_available = False
+else:
+    print("⚠️ GROQ_API_KEY not found - Groq functionality will be disabled")
+    groq_available = False
 
 def format_mcq_prompt(question_text: str, options: list, correct_answer: str) -> str:
     """Format prompt for MCQ questions"""
@@ -80,6 +100,15 @@ Your response should be structured and include:
 
 def query_groq(prompt: str, model_id: str, question_type: str, question_options: list = None) -> dict:
     """Query Groq API with structured output using Instructor"""
+    if not groq_available:
+        return {
+            "error": "Groq API not available. Please set GROQ_API_KEY environment variable.",
+            "provider": "Groq",
+            "model": "N/A",
+            "response_text": "",
+            "llm_extracted_answer": "API_KEY_MISSING"
+        }
+    
     if model_id not in GROQ_MODELS:
         return {"error": f"Invalid model ID. Available models: {list(GROQ_MODELS.keys())}", "provider": "Groq"}
     
@@ -167,15 +196,18 @@ def query_openai(prompt: str, model: str = "gpt-3.5-turbo") -> dict:
 
 LLM_MODEL_FOR_GENERATION = "llama3-70b-8192"
 
-HEADERS_GROQ = {
-    "Authorization": f"Bearer {GROQ_API_KEY}",
-    "Content-Type": "application/json"
-}
+# Initialize headers only if API key is available
+HEADERS_GROQ = {}
+if GROQ_API_KEY:
+    HEADERS_GROQ = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
 def llm_call_for_generation(prompt_text, max_retries=3, retry_delay=5):
     """Generic LLM call for text generation tasks using Groq API."""
-    if not GROQ_API_KEY:
-        print("Error: GROQ_API_KEY not found. Please set it in your .env file.")
+    if not groq_available or not GROQ_API_KEY:
+        print("Error: GROQ_API_KEY not found or Groq client not available. Please set it in your .env file.")
         return None
 
     data = {
@@ -215,6 +247,16 @@ def llm_call_for_generation(prompt_text, max_retries=3, retry_delay=5):
 
 def query_groq_with_rag(prompt: str, model_id: str, question_type: str, question_options: list = None, rag_pipeline=None) -> dict:
     """Query Groq API with RAG-enhanced structured output using Instructor"""
+    if not groq_available:
+        return {
+            "error": "Groq API not available. Please set GROQ_API_KEY environment variable.",
+            "provider": "Groq",
+            "model": "N/A",
+            "response_text": "",
+            "llm_extracted_answer": "API_KEY_MISSING",
+            "rag_enabled": bool(rag_pipeline)
+        }
+    
     if model_id not in GROQ_MODELS:
         return {"error": f"Invalid model ID. Available models: {list(GROQ_MODELS.keys())}", "provider": "Groq"}
     

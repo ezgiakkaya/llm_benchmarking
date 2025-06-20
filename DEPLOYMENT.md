@@ -1,4 +1,4 @@
-# Railway Deployment Guide
+# 🚀 Deployment Guide
 
 ## Overview
 This guide explains how to deploy the COMP430 LLM Benchmark application to Railway using multiple deployment methods.
@@ -29,8 +29,14 @@ This guide explains how to deploy the COMP430 LLM Benchmark application to Railw
 Set these in Railway's environment variables section:
 
 ```bash
-# MongoDB Connection
-MONGODB_URI=your_mongodb_connection_string
+# Required: MongoDB connection string
+MONGODB_URI=mongodb://your-connection-string
+
+# Optional: Database name (default: comp430_benchmark)
+DATABASE_NAME=comp430_benchmark
+
+# Optional: Connection timeout in milliseconds (default: 5000)
+MONGODB_TIMEOUT=5000
 
 # OpenAI API
 OPENAI_API_KEY=your_openai_api_key
@@ -86,54 +92,116 @@ MONGODB_URI=mongodb://localhost:27017/comp430_benchmark
 
 ## Database Setup
 
-### MongoDB Atlas (Recommended for Production)
+### MongoDB Configuration
 
-1. **Create MongoDB Atlas Cluster**
-   - Sign up at mongodb.com/atlas
-   - Create a free cluster
-   - Get connection string
+The app now supports flexible MongoDB configuration for different deployment scenarios.
 
-2. **Configure Network Access**
-   - Allow access from anywhere (0.0.0.0/0) for Railway
-   - Or whitelist Railway's IP ranges
+### Deployment Scenarios
 
-3. **Set Environment Variable**
+#### 1. Local Development
+```bash
+export MONGODB_URI="mongodb://localhost:27017/"
+```
+
+#### 2. MongoDB Atlas (Cloud)
+```bash
+export MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/"
+```
+
+#### 3. Railway Deployment
+```bash
+# Railway will provide these automatically if you add MongoDB service
+export MONGODB_URI="mongodb://mongo:27017/"
+```
+
+#### 4. Docker Deployment
+```bash
+# If using Docker Compose with MongoDB service
+export MONGODB_URI="mongodb://mongodb:27017/"
+```
+
+### Railway Deployment Steps
+
+1. **Push your code to GitHub**
+   ```bash
+   git push origin deployment-setup
    ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/comp430_benchmark
-   ```
 
-## Troubleshooting
+2. **Create Railway Project**
+   - Go to [Railway](https://railway.app)
+   - Connect your GitHub repository
+   - Select the `deployment-setup` branch
 
-### Common Issues
+3. **Add MongoDB Service**
+   - In Railway dashboard, click "New Service"
+   - Select "Database" → "MongoDB"
+   - Railway will automatically set `MONGODB_URI` environment variable
 
-1. **Port Configuration**
-   - Ensure `$PORT` environment variable is used
-   - Streamlit must bind to `0.0.0.0` for external access
+4. **Set Environment Variables**
+   - Go to your app service settings
+   - Add environment variables:
+     ```
+     OPENAI_API_KEY=your_openai_key
+     GROQ_API_KEY=your_groq_key
+     ANTHROPIC_API_KEY=your_anthropic_key
+     PINECONE_API_KEY=your_pinecone_key
+     ```
 
-2. **Dependencies**
-   - Check `requirements.txt` for all necessary packages
-   - Some packages may require system dependencies (handled in Dockerfile)
+5. **Deploy**
+   - Railway will automatically deploy when you push changes
+   - The app will start in demo mode if MongoDB is not available
+   - Once MongoDB is connected, full functionality will be available
 
-3. **Environment Variables**
-   - Verify all required API keys are set
-   - Check MongoDB connection string format
+### Demo Mode
 
-4. **Build Failures**
-   - Check Railway build logs for specific errors
-   - Ensure Python version compatibility (3.11 recommended)
+If MongoDB is not available, the app will run in **demo mode**:
+- ✅ LLM testing still works
+- ✅ RAG functionality available
+- ❌ Question upload disabled
+- ❌ Results dashboard limited
+- ⚠️  Data not persisted
 
-### Debug Commands
+### Health Checks
+
+The app includes database connection monitoring:
+- Green status: Database connected
+- Yellow/Red status: Demo mode (database not available)
+- Sidebar shows connection details
+
+### Troubleshooting
+
+#### Connection Timeout
+- Increase `MONGODB_TIMEOUT` environment variable
+- Check network connectivity
+- Verify MongoDB service is running
+
+#### Authentication Failed
+- Verify username/password in connection string
+- Check database user permissions
+- Ensure IP whitelist includes your deployment IP
+
+#### Service Discovery
+- For Docker: Use service names (e.g., `mongodb:27017`)
+- For Railway: Use provided connection strings
+- For local: Use `localhost:27017`
+
+### Docker Deployment
+
+The updated Dockerfile includes all necessary dependencies. To deploy:
 
 ```bash
-# Check if application starts locally
-streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
+# Build image
+docker build -t comp430-llm-benchmark .
 
-# Test environment variables
-python -c "import os; print(os.getenv('MONGODB_URI'))"
-
-# Verify dependencies
-pip list
+# Run with environment variables
+docker run -d \
+  -p 8501:8501 \
+  -e MONGODB_URI="mongodb://your-connection-string" \
+  -e OPENAI_API_KEY="your-key" \
+  comp430-llm-benchmark
 ```
+
+The app is now production-ready with proper error handling and flexible database configuration! 🎉
 
 ## Performance Considerations
 
