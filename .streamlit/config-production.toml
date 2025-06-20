@@ -1,0 +1,43 @@
+[server]
+# Production server configuration for cloud deployment
+headless = true
+runOnSave = false
+allowRunOnSave = false
+fileWatcherType = "none"
+port = 8080
+address = "0.0.0.0"
+
+# CORS configuration for cloud deployment
+enableCORS = true
+enableXsrfProtection = false
+
+# Disable WebSocket features completely
+enableWebsocketCompression = false
+maxUploadSize = 200
+maxMessageSize = 200
+
+# Base URL configuration
+baseUrlPath = ""
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8080
+
+[global]
+# Production mode settings
+developmentMode = false
+logLevel = "info"
+unitTest = false
+
+[theme]
+primaryColor = "#FF6B6B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+
+[runner]
+# Runner configuration for production
+magicEnabled = false
+installTracer = false
+fixMatplotlib = true 

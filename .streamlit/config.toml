@@ -10,6 +10,10 @@ enableCORS = true
 enableXsrfProtection = false
 enableWebsocketCompression = false
 
+# Force HTTP polling instead of WebSockets for cloud compatibility
+allowRunOnSave = false
+fileWatcherType = "none"
+
 # Base URL configuration for reverse proxy
 baseUrlPath = ""
 
@@ -17,6 +21,10 @@ baseUrlPath = ""
 gatherUsageStats = false
 serverAddress = "0.0.0.0"
 serverPort = 8080
+
+[global]
+# Disable WebSocket connections, use HTTP polling
+developmentMode = false
 
 [theme]
 # Optional: Set a custom theme
