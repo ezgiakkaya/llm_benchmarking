@@ -81,7 +81,6 @@ def query_groq(prompt: str, model_id: str, question_type: str, question_options:
     if model_id not in GROQ_MODELS:
         return {"error": f"Invalid model ID. Available models: {list(GROQ_MODELS.keys())}", "provider": "Groq"}
     
-    # Ensure options are a list for MCQ to prevent errors
     if question_type == "MCQ" and not isinstance(question_options, list):
         question_options = []
 
@@ -89,7 +88,6 @@ def query_groq(prompt: str, model_id: str, question_type: str, question_options:
     start = time.time()
 
     try:
-        # Format prompt based on question type
         if question_type == "MCQ":
             formatted_prompt = format_mcq_prompt(prompt, question_options, question_options[0] if question_options else 'A')
             response = client.chat.completions.create(
@@ -97,24 +95,20 @@ def query_groq(prompt: str, model_id: str, question_type: str, question_options:
                 messages=[{"role": "user", "content": formatted_prompt}],
                 response_model=MCQAnswer
             )
-            # Enhanced validation for selected_option
             if not isinstance(response.selected_option, str):
-                response.selected_option = 'A'  # Default to A if not a string
+                response.selected_option = 'A'
             else:
-                # Clean the response: remove whitespace and convert to uppercase
                 cleaned_option = response.selected_option.strip().upper()
-                # Try to extract a single letter A, B, C, or D
                 match = re.search(r'[A-D]', cleaned_option)
                 if match:
                     response.selected_option = match.group(0)
                 else:
-                    # If no valid letter found, try to match with option text
                     for i, opt in enumerate(question_options):
                         if cleaned_option.lower() in opt.lower():
                             response.selected_option = chr(ord('A') + i)
                             break
                     else:
-                        response.selected_option = 'A'  # Default to A if no match found
+                        response.selected_option = 'A'
             answer = response
         elif question_type == "True/False":
             formatted_prompt = format_true_false_prompt(prompt)
@@ -124,7 +118,7 @@ def query_groq(prompt: str, model_id: str, question_type: str, question_options:
                 response_model=TrueFalseAnswer
             )
             answer = response
-        else:  # Short Answer
+        else:
             formatted_prompt = format_short_answer_prompt(prompt)
             response = client.chat.completions.create(
                 model=model_id,
@@ -216,7 +210,6 @@ def query_groq_with_rag(prompt: str, model_id: str, question_type: str, question
     if model_id not in GROQ_MODELS:
         return {"error": f"Invalid model ID. Available models: {list(GROQ_MODELS.keys())}", "provider": "Groq"}
     
-    # Ensure options are a list for MCQ to prevent errors
     if question_type == "MCQ" and not isinstance(question_options, list):
         question_options = []
 
@@ -224,21 +217,17 @@ def query_groq_with_rag(prompt: str, model_id: str, question_type: str, question
     start = time.time()
 
     try:
-        # Get RAG context if pipeline is provided
         rag_context = ""
         rag_sources = []
         if rag_pipeline:
             try:
                 rag_result = rag_pipeline.query_rag(prompt, top_k=3)
                 if rag_result:
-                    # Extract relevant information from retrieved documents
                     rag_context = f"\n\nRelevant Context from Course Materials:\n{rag_result['response']}"
                     rag_sources = rag_result.get('sources', [])
             except Exception as e:
                 print(f"Warning: RAG retrieval failed: {str(e)}")
-                # Continue without RAG context if retrieval fails
         
-        # Format prompt based on question type with RAG context
         if question_type == "MCQ":
             formatted_prompt = format_mcq_prompt_with_rag(prompt, question_options, question_options[0] if question_options else 'A', rag_context)
             response = client.chat.completions.create(
@@ -246,24 +235,20 @@ def query_groq_with_rag(prompt: str, model_id: str, question_type: str, question
                 messages=[{"role": "user", "content": formatted_prompt}],
                 response_model=MCQAnswer
             )
-            # Enhanced validation for selected_option
             if not isinstance(response.selected_option, str):
-                response.selected_option = 'A'  # Default to A if not a string
+                response.selected_option = 'A'
             else:
-                # Clean the response: remove whitespace and convert to uppercase
                 cleaned_option = response.selected_option.strip().upper()
-                # Try to extract a single letter A, B, C, or D
                 match = re.search(r'[A-D]', cleaned_option)
                 if match:
                     response.selected_option = match.group(0)
                 else:
-                    # If no valid letter found, try to match with option text
                     for i, opt in enumerate(question_options):
                         if cleaned_option.lower() in opt.lower():
                             response.selected_option = chr(ord('A') + i)
                             break
                     else:
-                        response.selected_option = 'A'  # Default to A if no match found
+                        response.selected_option = 'A'
             answer = response
         elif question_type == "True/False":
             formatted_prompt = format_true_false_prompt_with_rag(prompt, rag_context)
@@ -273,7 +258,7 @@ def query_groq_with_rag(prompt: str, model_id: str, question_type: str, question
                 response_model=TrueFalseAnswer
             )
             answer = response
-        else:  # Short Answer
+        else:
             formatted_prompt = format_short_answer_prompt_with_rag(prompt, rag_context)
             response = client.chat.completions.create(
                 model=model_id,

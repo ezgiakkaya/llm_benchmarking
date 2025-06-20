@@ -13,7 +13,6 @@ load_dotenv()
 
 class RAGPipeline:
     def __init__(self):
-        # Validate environment variables
         required_env_vars = {
             'PINECONE_API_KEY': os.getenv('PINECONE_API_KEY'),
             'PINECONE_INDEX_NAME': os.getenv('PINECONE_INDEX_NAME'),
@@ -25,11 +24,9 @@ class RAGPipeline:
             raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
         
         try:
-            # Initialize Pinecone with new API (Pinecone class)
             print(f"Initializing Pinecone (new API, Pinecone class)")
             pc = Pinecone(api_key=required_env_vars['PINECONE_API_KEY'])
             index_name = required_env_vars['PINECONE_INDEX_NAME']
-            # List indexes
             print("Listing existing Pinecone indexes...")
             existing_indexes = pc.list_indexes().names()
             print(f"Found indexes: {existing_indexes}")
@@ -37,7 +34,7 @@ class RAGPipeline:
                 print(f"Creating new Pinecone index: {index_name}")
                 pc.create_index(
                     name=index_name,
-                    dimension=768,  # Dimension for jina embeddings
+                    dimension=768,
                     metric="cosine",
                     spec=ServerlessSpec(cloud="aws", region="us-west-2")
                 )
@@ -46,7 +43,6 @@ class RAGPipeline:
             self.index = pc.Index(index_name)
             print("Successfully connected to Pinecone index")
             
-            # Initialize embedding model
             print("Initializing embedding model...")
             self.embedding_model = AutoModel.from_pretrained(
                 'jinaai/jina-embeddings-v2-base-en',
@@ -54,18 +50,15 @@ class RAGPipeline:
             )
             print("Successfully initialized embedding model")
             
-            # Initialize Groq client
             print("Initializing Groq client...")
             self.groq_client = Groq(api_key=required_env_vars['GROQ_API_KEY'])
             print("Successfully initialized Groq client")
             
-            # Initialize directories
             self.data_dir = Path("data")
             self.embeddings_dir = self.data_dir / "embeddings"
             self.processed_dir = self.data_dir / "processed_pdfs"
             self.vector_store_dir = self.data_dir / "vector_store"
             
-            # Create directories if they don't exist
             for dir_path in [self.data_dir, self.embeddings_dir, self.processed_dir, self.vector_store_dir]:
                 dir_path.mkdir(exist_ok=True)
             print("Successfully initialized all directories")
@@ -85,11 +78,10 @@ class RAGPipeline:
                 for page_num, page in enumerate(pdf_reader.pages):
                     text = page.extract_text()
                     
-                    # Split text into chunks (you can adjust the chunk size)
                     chunk_size = 1000
                     for i in range(0, len(text), chunk_size):
                         chunk = text[i:i + chunk_size]
-                        if chunk.strip():  # Only add non-empty chunks
+                        if chunk.strip():
                             chunks.append({
                                 'text': chunk,
                                 'metadata': {
@@ -111,10 +103,8 @@ class RAGPipeline:
         
         for chunk in chunks:
             try:
-                # Create embedding
                 embedding = self.embedding_model.encode(chunk['text']).tolist()
                 
-                # Add embedding to chunk data
                 chunk_with_embedding = {
                     'id': f"{chunk['metadata']['source']}_{chunk['metadata']['page']}_{chunk['metadata']['chunk_index']}",
                     'values': embedding,
@@ -136,7 +126,6 @@ class RAGPipeline:
     def store_vectors(self, embedded_chunks: List[Dict[str, Any]]):
         """Store vectors in Pinecone."""
         try:
-            # Upsert vectors in batches
             batch_size = 100
             for i in range(0, len(embedded_chunks), batch_size):
                 batch = embedded_chunks[i:i + batch_size]
@@ -148,21 +137,17 @@ class RAGPipeline:
     def query_rag(self, query: str, top_k: int = 5) -> Dict[str, Any]:
         """Query the RAG system."""
         try:
-            # Create query embedding
             query_embedding = self.embedding_model.encode(query).tolist()
             
-            # Query Pinecone
             results = self.index.query(
                 vector=query_embedding,
                 top_k=top_k,
                 include_metadata=True
             )
             
-            # Prepare context
             matched_info = ' '.join(item['metadata']['text'] for item in results['matches'])
             sources = [item['metadata']['source'] for item in results['matches']]
             
-            # Create system prompt
             context = f"Information: {matched_info} and the sources: {sources}"
             sys_prompt = f"""
             Instructions:
@@ -173,7 +158,6 @@ class RAGPipeline:
             Context: {context}
             """
             
-            # Query Groq with fallback models
             models_to_try = [
                 "llama3-70b-8192",
                 "gemma2-9b-it",
@@ -222,13 +206,10 @@ class RAGPipeline:
         for pdf_file in pdf_files:
             print(f"Processing {pdf_file.name}...")
             
-            # Process PDF
             chunks = self.process_pdf(pdf_file)
             
-            # Create embeddings
             embedded_chunks = self.create_embeddings(chunks)
             
-            # Store vectors
             self.store_vectors(embedded_chunks)
             
             print(f"Completed processing {pdf_file.name}") 
