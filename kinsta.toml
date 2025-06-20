@@ -1,0 +1,29 @@
+[build]
+# Build command (if needed)
+buildCommand = "echo 'No build command needed for Docker deployment'"
+
+[deploy]
+# Deployment settings
+publishDirectory = "."
+
+[build.environment]
+# Environment variables for build
+PYTHON_VERSION = "3.11.13"
+NODE_ENV = "production"
+
+# Runtime settings
+[app]
+# Health check endpoint
+healthCheckPath = "/_stcore/health"
+
+# Port configuration
+port = "${PORT}"
+
+# Container settings
+[container]
+# Use Docker for deployment
+dockerfile = "Dockerfile"
+
+# Resource limits
+memory = "1Gi"
+cpu = "0.5" 
