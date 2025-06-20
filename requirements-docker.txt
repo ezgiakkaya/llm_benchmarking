@@ -1,0 +1,83 @@
+# Core dependencies from working environment
+streamlit>=1.40.0
+pandas>=1.5.0
+numpy>=2.0.0
+openai>=1.80.0
+groq>=0.28.0
+anthropic>=0.18.0
+instructor>=1.8.0
+pymongo>=4.13.0
+transformers>=4.50.0
+torch>=2.1.0
+sentence-transformers>=2.5.0
+scikit-learn>=1.3.0
+pinecone-client>=6.0.0
+PyPDF2>=3.0.0
+python-dotenv>=1.1.0
+pydantic>=2.11.0
+pydantic-core>=2.33.0
+requests>=2.32.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.17.0
+
+# Essential system dependencies
+distro>=1.9.0
+sniffio>=1.3.0
+anyio>=4.9.0
+httpx>=0.28.0
+httpcore>=1.0.0
+idna>=3.10
+urllib3>=2.5.0
+certifi>=2025.6.0
+charset-normalizer>=3.4.0
+
+# Core Python utilities
+click>=8.2.0
+typing-extensions>=4.14.0
+packaging>=25.0
+six>=1.17.0
+python-dateutil>=2.9.0
+pytz>=2020.1
+toml>=0.10.0
+
+# Async and HTTP
+aiohttp>=3.12.0
+aiosignal>=1.3.0
+attrs>=25.3.0
+multidict>=6.5.0
+yarl>=1.20.0
+frozenlist>=1.7.0
+propcache>=0.3.0
+aiohappyeyeballs>=2.6.0
+
+# Hugging Face and ML
+huggingface-hub>=0.33.0
+tokenizers>=0.21.0
+safetensors>=0.5.0
+regex>=2024.11.0
+filelock>=3.18.0
+fsspec>=2025.5.0
+tqdm>=4.67.0
+
+# Additional utilities
+Jinja2>=3.1.0
+MarkupSafe>=3.0.0
+PyYAML>=6.0.0
+rich>=13.9.0
+typer>=0.16.0
+tenacity>=9.1.0
+dnspython>=2.7.0
+
+# Pinecone specific
+pinecone-plugin-interface>=0.0.7
+
+# Development tools
+docstring-parser>=0.16
+h11>=0.16.0
+jiter>=0.8.0
+markdown-it-py>=3.0.0
+mdurl>=0.1.0
+Pygments>=2.19.0
+shellingham>=1.5.0
+typing-inspection>=0.4.0 
